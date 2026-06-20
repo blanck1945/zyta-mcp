@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Zyta MCP: login (guardar token)",
+      "type": "shell",
+      "command": "npm run login",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "group": "none"
+    },
+    {
+      "label": "Zyta MCP: login dispositivo (OAuth RFC 8628)",
+      "type": "shell",
+      "command": "npm run login:device",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "group": "none"
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "name": "zyta-mcp",
+  "version": "1.0.0",
+  "description": "Servidor MCP (stdio) para el API Zyta — judicial, jurisprudencia, marcas y Minerva",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blanck1945/zyta-mcp.git"
+  },
+  "homepage": "https://github.com/blanck1945/zyta-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/blanck1945/zyta-mcp/issues"
+  },
+  "main": "dist/index.js",
+  "bin": {
+    "zyta-mcp": "dist/index.js",
+    "zyta-mcp-login": "dist/login-cli.js",
+    "zyta-mcp-login-device": "dist/device-login-cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "login": "node dist/login-cli.js",
+    "login:device": "node dist/device-login-cli.js",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "zyta",
+    "kairo",
+    "minerva",
+    "jurisprudencia",
+    "cursor",
+    "claude"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.28.0",
+    "open": "^10.1.0",
+    "prompts": "^2.4.2",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/prompts": "^2.4.9",
+    "typescript": "^5.9.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "docs"
+  ]
+}
