@@ -1,6 +1,6 @@
 {
   "name": "zyta-mcp",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "Servidor MCP (stdio) para el API Zyta — judicial, jurisprudencia, marcas y Minerva",
   "type": "module",
   "license": "MIT",

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import open from "open";
+import { openBrowser } from "./browser.js";
 import {
   applyVerificationOverride,
   type DeviceVerifyOverride,
@@ -141,6 +141,25 @@ async function pollWithBudget(
   return { ok: false, pending: true };
 }
 
+function buildPendingResult(pending: PendingDevice): DeviceLoginResult {
+  const minutesLeft = Math.max(
+    1,
+    Math.round((pending.expiresAt - Date.now()) / 60000)
+  );
+  const verificationUriComplete =
+    pending.verificationUriComplete?.trim() || pending.verificationUri;
+  return {
+    ok: false,
+    pending: true,
+    message:
+      `Autorizá en el navegador (Brave): ${verificationUriComplete} ` +
+      `(código ${pending.userCode}). Expira en ~${minutesLeft} min. ` +
+      `Cuando confirmes en la web, volvé al chat y pedí completar el login de Minerva.`,
+    verificationUriComplete,
+    userCode: pending.userCode,
+  };
+}
+
 /**
  * Login estilo `gh auth login`: abre el navegador en la página de verificación y hace polling.
  * `verifyOverride` permite apuntar a Minerva (minerva.zyta.app) en lugar del dashboard.
@@ -151,8 +170,11 @@ export async function runDeviceLogin(
 ): Promise<DeviceLoginResult> {
   const flowOpts = buildFlowOptions(baseUrl);
   let pending = readPending();
+  const isResume = Boolean(
+    pending && pending.baseUrl === baseUrl && pending.expiresAt > Date.now()
+  );
 
-  if (!pending || pending.baseUrl !== baseUrl || pending.expiresAt <= Date.now()) {
+  if (!isResume) {
     const session = await startDeviceAuthorization(flowOpts);
     const urls = applyVerificationOverride(
       {
@@ -175,22 +197,23 @@ export async function runDeviceLogin(
 
     const toOpen =
       pending.verificationUriComplete?.trim() || pending.verificationUri;
-    try {
-      await open(toOpen);
-    } catch {
-      /* el agente puede mostrar la URL al usuario */
-    }
-  } else if (verifyOverride?.verifyBaseUrl) {
-    const urls = applyVerificationOverride(pending, verifyOverride);
+    openBrowser(toOpen);
+
+    return buildPendingResult(pending);
+  }
+
+  if (verifyOverride?.verifyBaseUrl) {
+    const urls = applyVerificationOverride(pending!, verifyOverride);
     pending = {
-      ...pending,
+      ...pending!,
       verificationUri: urls.verificationUri,
       verificationUriComplete: urls.verificationUriComplete,
     };
     writePending(pending);
+    openBrowser(pending.verificationUriComplete?.trim() || pending.verificationUri);
   }
 
-  const poll = await pollWithBudget(flowOpts, pending);
+  const poll = await pollWithBudget(flowOpts, pending!);
 
   if (poll.ok) {
     clearPendingDevice();
@@ -207,22 +230,7 @@ export async function runDeviceLogin(
   }
 
   if (poll.pending) {
-    const minutesLeft = Math.max(
-      1,
-      Math.round((pending.expiresAt - Date.now()) / 60000)
-    );
-    const verificationUriComplete =
-      pending.verificationUriComplete?.trim() || pending.verificationUri;
-    return {
-      ok: false,
-      pending: true,
-      message:
-        `Autorizá en el navegador: ${verificationUriComplete} ` +
-        `(código ${pending.userCode}). Expira en ~${minutesLeft} min. ` +
-        `Cuando confirmes en la web, el agente completará la sesión automáticamente.`,
-      verificationUriComplete,
-      userCode: pending.userCode,
-    };
+    return buildPendingResult(pending!);
   }
 
   return { ok: false, pending: false, message: poll.message };

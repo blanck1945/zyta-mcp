@@ -5,7 +5,7 @@
  *
  * Requiere que el backend implemente los endpoints en docs/BACKEND_MCP_AUTH_SPEC.md
  */
-import open from "open";
+import { openBrowser } from "./auth/browser.js";
 import { pollDeviceUntilAccessToken, startDeviceAuthorization, } from "./auth/deviceFlow.js";
 import { resolveMinervaAppUrl } from "./auth/deviceVerifyUrl.js";
 import { runDeviceLogin } from "./auth/mcpDeviceLogin.js";
@@ -70,7 +70,7 @@ async function main() {
     console.log("---\n");
     const toOpen = session.verificationUriComplete?.trim() || session.verificationUri;
     try {
-        await open(toOpen);
+        openBrowser(toOpen);
     }
     catch {
         console.log("No se pudo abrir el navegador automáticamente. URL:\n", toOpen);
