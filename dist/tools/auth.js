@@ -7,11 +7,11 @@ export function registerAuthTools(server, env) {
     server.registerTool("zyta_login", {
         description: "Obligatorio antes de cualquier otra herramienta si no hay sesión. " +
             "Opciones (en orden): access_token manual; email+password (POST /auth/login); " +
-            "device flow (abre navegador en /mcp-device — requiere dashboard desplegado). " +
-            "Para Minerva preferí zyta_minerva_login. Si el device flow queda pendiente, usá email+password o `npx zyta-mcp-login`.",
+            "device flow (abre navegador en minerva.zyta.app/mcp-device). " +
+            "Para Minerva preferí zyta_minerva_login.",
         inputSchema: loginInputSchema,
     }, async (args) => executeLogin(args, {
-        pendingHint: " Si /mcp-device da 404, usá zyta_login con email+password o ejecutá: npx zyta-mcp-login",
+        pendingHint: " Autorizá en minerva.zyta.app/mcp-device; el agente completará la sesión al confirmar en la web.",
     }));
     server.registerTool("zyta_disconnect", {
         description: "Cierra la sesión del agente MCP (borra token en memoria y el archivo ~/.zyta-mcp/token). No cierra sesión en el navegador.",

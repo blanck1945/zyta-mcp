@@ -72,7 +72,7 @@ export function registerMinervaTools(server, api, env) {
         inputSchema: loginInputSchema,
     }, async (args) => executeLogin(args, {
         deviceVerify: MINERVA_VERIFY,
-        pendingHint: " Abrí la URL de Minerva, autorizá, y volvé a llamar zyta_minerva_login. Si falla, usá email+password.",
+        pendingHint: " Autorizá en minerva.zyta.app/mcp-device; el agente completará la sesión al confirmar en la web.",
         successMessage: "Sesión Minerva OK. Token guardado.",
         credentialsMessage: "Sesión Minerva OK (email/contraseña). Token guardado.",
     }));

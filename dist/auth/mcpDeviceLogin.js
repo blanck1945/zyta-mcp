@@ -4,7 +4,8 @@ import os from "node:os";
 import open from "open";
 import { applyVerificationOverride, } from "./deviceVerifyUrl.js";
 import { pollDeviceTokenOnce, startDeviceAuthorization, } from "./deviceFlow.js";
-const DEVICE_POLL_BUDGET_MS = 45_000;
+import { userLabelFromProfile, writeDeviceAuthComplete } from "./cursorNotify.js";
+const DEVICE_POLL_BUDGET_MS = 120_000;
 function pendingPath() {
     return path.join(os.homedir(), ".zyta-mcp", "device-pending.json");
 }
@@ -90,7 +91,6 @@ async function pollWithBudget(flowOpts, pending) {
  */
 export async function runDeviceLogin(baseUrl, verifyOverride) {
     const flowOpts = buildFlowOptions(baseUrl);
-    const retryTool = verifyOverride?.retryToolName ?? "zyta_login";
     let pending = readPending();
     if (!pending || pending.baseUrl !== baseUrl || pending.expiresAt <= Date.now()) {
         const session = await startDeviceAuthorization(flowOpts);
@@ -130,6 +130,14 @@ export async function runDeviceLogin(baseUrl, verifyOverride) {
     if (poll.ok) {
         clearPendingDevice();
         const user = await fetchUserProfile(baseUrl, poll.accessToken);
+        const { userName, userEmail } = userLabelFromProfile(user);
+        writeDeviceAuthComplete({
+            authorizedAt: new Date().toISOString(),
+            userName,
+            userEmail,
+            clientLabel: process.env.ZYTA_MCP_CLIENT_LABEL?.trim() || "Agente MCP",
+            source: "mcp",
+        });
         return { ok: true, accessToken: poll.accessToken, user };
     }
     if (poll.pending) {
@@ -138,9 +146,9 @@ export async function runDeviceLogin(baseUrl, verifyOverride) {
         return {
             ok: false,
             pending: true,
-            message: `Abrí ${verificationUriComplete} e iniciá sesión para autorizar el agente ` +
+            message: `Autorizá en el navegador: ${verificationUriComplete} ` +
                 `(código ${pending.userCode}). Expira en ~${minutesLeft} min. ` +
-                `Volvé a llamar a ${retryTool} cuando confirmes.`,
+                `Cuando confirmes en la web, el agente completará la sesión automáticamente.`,
             verificationUriComplete,
             userCode: pending.userCode,
         };

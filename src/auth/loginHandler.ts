@@ -49,7 +49,7 @@ export async function executeLogin(
 ): Promise<CallToolResult> {
   const pendingHint =
     options.pendingHint ??
-    " Si /mcp-device da 404, usá email+password o ejecutá: npx zyta-mcp-login";
+    " Autorizá en el navegador; si el agente queda pendiente, volvé a llamar al login para completar la sesión.";
   const successMessage = options.successMessage ?? "Sesión OK. Token guardado.";
   const credentialsMessage =
     options.credentialsMessage ?? "Sesión OK (email/contraseña). Token guardado.";

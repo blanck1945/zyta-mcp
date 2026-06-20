@@ -11,8 +11,9 @@ import {
   startDeviceAuthorization,
   type DeviceFlowOptions,
 } from "./deviceFlow.js";
+import { userLabelFromProfile, writeDeviceAuthComplete } from "./cursorNotify.js";
 
-const DEVICE_POLL_BUDGET_MS = 45_000;
+const DEVICE_POLL_BUDGET_MS = 120_000;
 
 export type PendingDevice = {
   baseUrl: string;
@@ -149,7 +150,6 @@ export async function runDeviceLogin(
   verifyOverride?: DeviceVerifyOverride
 ): Promise<DeviceLoginResult> {
   const flowOpts = buildFlowOptions(baseUrl);
-  const retryTool = verifyOverride?.retryToolName ?? "zyta_login";
   let pending = readPending();
 
   if (!pending || pending.baseUrl !== baseUrl || pending.expiresAt <= Date.now()) {
@@ -195,6 +195,14 @@ export async function runDeviceLogin(
   if (poll.ok) {
     clearPendingDevice();
     const user = await fetchUserProfile(baseUrl, poll.accessToken);
+    const { userName, userEmail } = userLabelFromProfile(user);
+    writeDeviceAuthComplete({
+      authorizedAt: new Date().toISOString(),
+      userName,
+      userEmail,
+      clientLabel: process.env.ZYTA_MCP_CLIENT_LABEL?.trim() || "Agente MCP",
+      source: "mcp",
+    });
     return { ok: true, accessToken: poll.accessToken, user };
   }
 
@@ -209,9 +217,9 @@ export async function runDeviceLogin(
       ok: false,
       pending: true,
       message:
-        `Abrí ${verificationUriComplete} e iniciá sesión para autorizar el agente ` +
+        `Autorizá en el navegador: ${verificationUriComplete} ` +
         `(código ${pending.userCode}). Expira en ~${minutesLeft} min. ` +
-        `Volvé a llamar a ${retryTool} cuando confirmes.`,
+        `Cuando confirmes en la web, el agente completará la sesión automáticamente.`,
       verificationUriComplete,
       userCode: pending.userCode,
     };

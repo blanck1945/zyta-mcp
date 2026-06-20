@@ -23,7 +23,7 @@ async function main(): Promise<void> {
   const api = new KairoApiClient(env.baseUrl);
 
   const server = new McpServer(
-    { name: "zyta-mcp", version: "1.2.2" },
+    { name: "zyta-mcp", version: "1.2.3" },
     {
       instructions:
         "Herramientas para consultar el API Zyta (judicial, jurisprudencia, marcas, Minerva). " +

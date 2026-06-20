@@ -7,6 +7,8 @@
  */
 import open from "open";
 import { pollDeviceUntilAccessToken, startDeviceAuthorization, } from "./auth/deviceFlow.js";
+import { resolveMinervaAppUrl } from "./auth/deviceVerifyUrl.js";
+import { runDeviceLogin } from "./auth/mcpDeviceLogin.js";
 import { getDefaultTokenFilePath, saveTokenToFile, } from "./tokenStore.js";
 function getBaseUrlFromEnv() {
     const a = process.env.KAIRO_API_BASE_URL?.trim();
@@ -34,6 +36,32 @@ async function main() {
         process.exit(1);
     }
     const flowOpts = buildFlowOptions(baseUrl);
+    const outPath = process.env.KAIRO_TOKEN_FILE?.trim() ||
+        process.env.ZYTA_TOKEN_FILE?.trim() ||
+        getDefaultTokenFilePath();
+    const minervaOverride = process.env.ZYTA_MINERVA_APP_URL?.trim() ||
+        process.env.KAIRO_MINERVA_APP_URL?.trim()
+        ? {
+            verifyBaseUrl: resolveMinervaAppUrl(),
+            verifyPath: "/mcp-device",
+            retryToolName: "zyta_minerva_login",
+        }
+        : undefined;
+    if (minervaOverride) {
+        console.log("Modo Minerva: verificación en", resolveMinervaAppUrl(), "/mcp-device");
+        const result = await runDeviceLogin(baseUrl, minervaOverride);
+        if (result.ok) {
+            saveTokenToFile(outPath, result.accessToken);
+            console.log("Listo. Token guardado en:", outPath);
+            return;
+        }
+        if (result.pending) {
+            console.error(result.message);
+            process.exit(1);
+        }
+        console.error(result.message);
+        process.exit(1);
+    }
     console.log("Solicitando código de dispositivo al servidor…");
     const session = await startDeviceAuthorization(flowOpts);
     console.log("\n---");
@@ -49,9 +77,6 @@ async function main() {
     }
     console.log("Esperando confirmación (no cierres esta ventana)…\n");
     const accessToken = await pollDeviceUntilAccessToken(flowOpts, session);
-    const outPath = process.env.KAIRO_TOKEN_FILE?.trim() ||
-        process.env.ZYTA_TOKEN_FILE?.trim() ||
-        getDefaultTokenFilePath();
     saveTokenToFile(outPath, accessToken);
     console.log("Listo. Token guardado en:", outPath);
     console.log("En Cursor podés usar solo KAIRO_API_BASE_URL en la config MCP (sin JWT en el JSON).");
