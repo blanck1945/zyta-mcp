@@ -1,3 +1,4 @@
+import { type DeviceVerifyOverride } from "./deviceVerifyUrl.js";
 export type PendingDevice = {
     baseUrl: string;
     deviceCode: string;
@@ -24,6 +25,7 @@ export type DeviceLoginResult = {
 };
 export declare function clearPendingDevice(): void;
 /**
- * Login estilo `gh auth login`: abre el navegador en la página de Zyta y hace polling.
+ * Login estilo `gh auth login`: abre el navegador en la página de verificación y hace polling.
+ * `verifyOverride` permite apuntar a Minerva (minerva.zyta.app) en lugar del dashboard.
  */
-export declare function runDeviceLogin(baseUrl: string): Promise<DeviceLoginResult>;
+export declare function runDeviceLogin(baseUrl: string, verifyOverride?: DeviceVerifyOverride): Promise<DeviceLoginResult>;

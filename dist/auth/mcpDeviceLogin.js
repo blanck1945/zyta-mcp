@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import open from "open";
+import { applyVerificationOverride, } from "./deviceVerifyUrl.js";
 import { pollDeviceTokenOnce, startDeviceAuthorization, } from "./deviceFlow.js";
 const DEVICE_POLL_BUDGET_MS = 45_000;
 function pendingPath() {
@@ -84,19 +85,26 @@ async function pollWithBudget(flowOpts, pending) {
     return { ok: false, pending: true };
 }
 /**
- * Login estilo `gh auth login`: abre el navegador en la página de Zyta y hace polling.
+ * Login estilo `gh auth login`: abre el navegador en la página de verificación y hace polling.
+ * `verifyOverride` permite apuntar a Minerva (minerva.zyta.app) en lugar del dashboard.
  */
-export async function runDeviceLogin(baseUrl) {
+export async function runDeviceLogin(baseUrl, verifyOverride) {
     const flowOpts = buildFlowOptions(baseUrl);
+    const retryTool = verifyOverride?.retryToolName ?? "zyta_login";
     let pending = readPending();
     if (!pending || pending.baseUrl !== baseUrl || pending.expiresAt <= Date.now()) {
         const session = await startDeviceAuthorization(flowOpts);
+        const urls = applyVerificationOverride({
+            userCode: session.userCode,
+            verificationUri: session.verificationUri,
+            verificationUriComplete: session.verificationUriComplete,
+        }, verifyOverride);
         pending = {
             baseUrl,
             deviceCode: session.deviceCode,
             userCode: session.userCode,
-            verificationUri: session.verificationUri,
-            verificationUriComplete: session.verificationUriComplete,
+            verificationUri: urls.verificationUri,
+            verificationUriComplete: urls.verificationUriComplete,
             expiresAt: Date.now() + session.expiresIn * 1000,
             intervalSec: session.intervalSec,
         };
@@ -108,6 +116,15 @@ export async function runDeviceLogin(baseUrl) {
         catch {
             /* el agente puede mostrar la URL al usuario */
         }
+    }
+    else if (verifyOverride?.verifyBaseUrl) {
+        const urls = applyVerificationOverride(pending, verifyOverride);
+        pending = {
+            ...pending,
+            verificationUri: urls.verificationUri,
+            verificationUriComplete: urls.verificationUriComplete,
+        };
+        writePending(pending);
     }
     const poll = await pollWithBudget(flowOpts, pending);
     if (poll.ok) {
@@ -121,9 +138,9 @@ export async function runDeviceLogin(baseUrl) {
         return {
             ok: false,
             pending: true,
-            message: `Abrí ${verificationUriComplete} e iniciá sesión en Zyta para autorizar el agente ` +
+            message: `Abrí ${verificationUriComplete} e iniciá sesión para autorizar el agente ` +
                 `(código ${pending.userCode}). Expira en ~${minutesLeft} min. ` +
-                `Volvé a llamar a zyta_login cuando confirmes.`,
+                `Volvé a llamar a ${retryTool} cuando confirmes.`,
             verificationUriComplete,
             userCode: pending.userCode,
         };

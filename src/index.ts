@@ -23,12 +23,12 @@ async function main(): Promise<void> {
   const api = new KairoApiClient(env.baseUrl);
 
   const server = new McpServer(
-    { name: "zyta-mcp", version: "1.2.1" },
+    { name: "zyta-mcp", version: "1.2.2" },
     {
       instructions:
         "Herramientas para consultar el API Zyta (judicial, jurisprudencia, marcas, Minerva). " +
-        "Autenticación Minerva: zyta_minerva_login (email+password recomendado) o zyta_login. " +
-        "Estado: zyta_minerva_auth_status. Terminal: npx zyta-mcp-login. " +
+        "Autenticación Minerva: zyta_minerva_login abre minerva.zyta.app/mcp-device (device flow). " +
+        "Alternativas: email+password en zyta_minerva_login, npx zyta-mcp-login. " +
         "Minerva: zyta_minerva_consultar, zyta_minerva_buscar_fallos, zyta_minerva_historial, zyta_minerva_uso. " +
         "No expone credenciales de portales al modelo.",
     }

@@ -55,15 +55,12 @@ export function clearSession() {
     memoryToken = null;
 }
 export function getTokenSource() {
-    if (memoryToken) {
-        if (tokenFromEnv() === memoryToken)
-            return "env";
-        return "file";
-    }
     if (tokenFromEnv())
         return "env";
     if (readPersistedToken())
         return "file";
+    if (memoryToken)
+        return "memory";
     return "none";
 }
 export function hasToken() {

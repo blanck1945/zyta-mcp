@@ -1,5 +1,24 @@
 import { z } from "zod/v3";
+import { executeLogin, loginInputSchema } from "../auth/loginHandler.js";
+import { resolveMinervaAppUrl } from "../auth/deviceVerifyUrl.js";
+import { ApiHttpError } from "../apiClient.js";
+import { AuthRequiredError, ensureToken, fetchCurrentUser, getTokenFilePath, getTokenSource, hasToken, } from "../session.js";
 import { jsonResult, toolError } from "../toolResult.js";
+const MINERVA_VERIFY = {
+    verifyBaseUrl: resolveMinervaAppUrl(),
+    verifyPath: "/mcp-device",
+    retryToolName: "zyta_minerva_login",
+};
+const MINERVA_AUTH_HINT = "Sin sesión para Minerva. Llamá `zyta_minerva_login` (device flow en minerva.zyta.app, email+password, o npx zyta-mcp-login).";
+function minervaToolError(err) {
+    if (err instanceof AuthRequiredError) {
+        return toolError(new AuthRequiredError(MINERVA_AUTH_HINT));
+    }
+    if (err instanceof ApiHttpError && err.status === 401) {
+        return toolError(new AuthRequiredError(MINERVA_AUTH_HINT));
+    }
+    return toolError(err);
+}
 const consultaInput = z.object({
     query: z.string().min(1).describe("Consulta jurídica en lenguaje natural"),
     top_k: z
@@ -45,12 +64,69 @@ const historialInput = z.object({
         .optional()
         .describe("Registros por página (default: 20)"),
 });
-export function registerMinervaTools(server, api) {
-    // Consulta completa: marco normativo + RAG + LLM → persiste en historial del usuario
+export function registerMinervaTools(server, api, env) {
+    server.registerTool("zyta_minerva_login", {
+        description: "Login para Minerva desde Cursor. Obligatorio antes de consultar. " +
+            "Sin args: device flow en minerva.zyta.app/mcp-device (no usa el dashboard). " +
+            "Alternativas: email+password; access_token manual.",
+        inputSchema: loginInputSchema,
+    }, async (args) => executeLogin(args, {
+        deviceVerify: MINERVA_VERIFY,
+        pendingHint: " Abrí la URL de Minerva, autorizá, y volvé a llamar zyta_minerva_login. Si falla, usá email+password.",
+        successMessage: "Sesión Minerva OK. Token guardado.",
+        credentialsMessage: "Sesión Minerva OK (email/contraseña). Token guardado.",
+    }));
+    server.registerTool("zyta_minerva_auth_status", {
+        description: "Estado de sesión para Minerva: token MCP, usuario y cuota mensual (GET /minerva/uso). " +
+            "Si no hay sesión, indica cómo llamar a zyta_minerva_login.",
+    }, async () => {
+        const base = {
+            baseUrl: env.baseUrl,
+            tokenSource: getTokenSource(),
+            hasToken: hasToken(),
+            tokenFileHint: getTokenSource() === "file" || getTokenSource() === "memory"
+                ? `Token en ${getTokenFilePath()}`
+                : getTokenSource() === "env"
+                    ? "Token desde KAIRO_API_TOKEN / ZYTA_API_TOKEN"
+                    : "Sin token — llamá a zyta_minerva_login",
+        };
+        if (!hasToken()) {
+            return jsonResult({
+                ok: false,
+                authenticated: false,
+                ...base,
+                loginHint: MINERVA_AUTH_HINT,
+                minervaAppUrl: resolveMinervaAppUrl(),
+            });
+        }
+        try {
+            const token = await ensureToken();
+            const [user, uso] = await Promise.all([
+                fetchCurrentUser(token),
+                api.get("/minerva/uso").catch(() => null),
+            ]);
+            return jsonResult({
+                ok: true,
+                authenticated: true,
+                ...base,
+                user,
+                minervaUso: uso,
+            });
+        }
+        catch (e) {
+            return jsonResult({
+                ok: false,
+                authenticated: false,
+                ...base,
+                loginHint: MINERVA_AUTH_HINT,
+                error: e instanceof Error ? e.message : String(e),
+            });
+        }
+    });
     server.registerTool("zyta_minerva_consultar", {
         description: "Consulta jurídica completa: busca fallos relevantes (RAG) + agrega marco normativo curado + genera respuesta con IA. " +
             "Queda registrada en el historial Minerva del usuario (visible en el dashboard). " +
-            "POST /minerva/consultar",
+            "Requiere zyta_minerva_login. POST /minerva/consultar",
         inputSchema: consultaInput,
     }, async (args) => {
         try {
@@ -58,14 +134,12 @@ export function registerMinervaTools(server, api) {
             return jsonResult(data);
         }
         catch (e) {
-            return toolError(e);
+            return minervaToolError(e);
         }
     });
-    // Solo RAG, sin LLM — para explorar qué fallos hay sobre un tema
     server.registerTool("zyta_minerva_buscar_fallos", {
         description: "Busca fallos relevantes en la base jurisprudencial sin generar respuesta IA. " +
-            "Útil para explorar qué jurisprudencia existe sobre un tema antes de hacer una consulta completa. " +
-            "POST /minerva/buscar",
+            "Requiere zyta_minerva_login. POST /minerva/buscar",
         inputSchema: buscarInput,
     }, async (args) => {
         try {
@@ -73,13 +147,11 @@ export function registerMinervaTools(server, api) {
             return jsonResult(data);
         }
         catch (e) {
-            return toolError(e);
+            return minervaToolError(e);
         }
     });
-    // Historial paginado del usuario
     server.registerTool("zyta_minerva_historial", {
-        description: "Devuelve el historial paginado de consultas Minerva del usuario autenticado, del más reciente al más antiguo. " +
-            "Incluye query, respuesta, fuentes y tokens usados por consulta. " +
+        description: "Historial paginado de consultas Minerva del usuario autenticado. Requiere zyta_minerva_login. " +
             "GET /minerva/historial",
         inputSchema: historialInput,
     }, async (args) => {
@@ -94,13 +166,12 @@ export function registerMinervaTools(server, api) {
             return jsonResult(data);
         }
         catch (e) {
-            return toolError(e);
+            return minervaToolError(e);
         }
     });
-    // Uso mensual y budget restante
     server.registerTool("zyta_minerva_uso", {
-        description: "Muestra el uso mensual de Minerva del usuario: costo acumulado en USD, límite del plan y saldo restante. " +
-            "GET /minerva/uso",
+        description: "Uso mensual de Minerva: costo acumulado, límite del plan y saldo restante. " +
+            "Requiere zyta_minerva_login. GET /minerva/uso",
         inputSchema: z.object({}),
     }, async () => {
         try {
@@ -108,7 +179,7 @@ export function registerMinervaTools(server, api) {
             return jsonResult(data);
         }
         catch (e) {
-            return toolError(e);
+            return minervaToolError(e);
         }
     });
 }

@@ -1,8 +1,7 @@
 /**
  * Resuelve URL base del API. El token se gestiona vía session.ts (login MCP o archivo).
  */
-import { bootstrapSession, getBaseUrl, getTokenSource, hasToken } from "./session.js";
-import { getTokenFilePath } from "./session.js";
+import { bootstrapSession, getBaseUrl, getTokenFilePath, getTokenSource, hasToken } from "./session.js";
 export function loadEnv() {
     const baseRaw = process.env.KAIRO_API_BASE_URL?.trim() ||
         process.env.ZYTA_API_BASE_URL?.trim();

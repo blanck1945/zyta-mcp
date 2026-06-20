@@ -20,9 +20,10 @@ async function main() {
         return;
     }
     const api = new KairoApiClient(env.baseUrl);
-    const server = new McpServer({ name: "zyta-mcp", version: "1.1.0" }, {
+    const server = new McpServer({ name: "zyta-mcp", version: "1.2.2" }, {
         instructions: "Herramientas para consultar el API Zyta (judicial, jurisprudencia, marcas, Minerva). " +
-            "Autenticación: llamá primero a zyta_login (abre el navegador en Zyta) si no hay sesión. " +
+            "Autenticación Minerva: zyta_minerva_login abre minerva.zyta.app/mcp-device (device flow). " +
+            "Alternativas: email+password en zyta_minerva_login, npx zyta-mcp-login. " +
             "Minerva: zyta_minerva_consultar, zyta_minerva_buscar_fallos, zyta_minerva_historial, zyta_minerva_uso. " +
             "No expone credenciales de portales al modelo.",
     });
@@ -30,7 +31,7 @@ async function main() {
     registerJudicialTools(server, api);
     registerJurisprudenciaTools(server, api);
     registerTrademarksTools(server, api);
-    registerMinervaTools(server, api);
+    registerMinervaTools(server, api, env);
     const transport = new StdioServerTransport();
     await server.connect(transport);
 }

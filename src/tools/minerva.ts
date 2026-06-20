@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod/v3";
 import { executeLogin, loginInputSchema } from "../auth/loginHandler.js";
+import { resolveMinervaAppUrl } from "../auth/deviceVerifyUrl.js";
 import type { KairoApiClient } from "../apiClient.js";
 import { ApiHttpError } from "../apiClient.js";
 import type { LoadedEnv } from "../env.js";
@@ -15,8 +16,14 @@ import {
 } from "../session.js";
 import { jsonResult, toolError } from "../toolResult.js";
 
+const MINERVA_VERIFY = {
+  verifyBaseUrl: resolveMinervaAppUrl(),
+  verifyPath: "/mcp-device",
+  retryToolName: "zyta_minerva_login",
+} as const;
+
 const MINERVA_AUTH_HINT =
-  "Sin sesión para Minerva. Llamá `zyta_minerva_login` (email+password recomendado), `zyta_login`, o ejecutá `npx zyta-mcp-login`.";
+  "Sin sesión para Minerva. Llamá `zyta_minerva_login` (device flow en minerva.zyta.app, email+password, o npx zyta-mcp-login).";
 
 function minervaToolError(err: unknown): CallToolResult {
   if (err instanceof AuthRequiredError) {
@@ -87,15 +94,16 @@ export function registerMinervaTools(
     "zyta_minerva_login",
     {
       description:
-        "Login para usar Minerva desde Cursor. Obligatorio antes de consultar, historial o uso. " +
-        "Opciones: email+password (recomendado mientras /mcp-device no esté en prod); access_token manual; " +
-        "device flow (navegador). Alias de zyta_login orientado a Minerva.",
+        "Login para Minerva desde Cursor. Obligatorio antes de consultar. " +
+        "Sin args: device flow en minerva.zyta.app/mcp-device (no usa el dashboard). " +
+        "Alternativas: email+password; access_token manual.",
       inputSchema: loginInputSchema,
     },
     async (args) =>
       executeLogin(args, {
+        deviceVerify: MINERVA_VERIFY,
         pendingHint:
-          " Si /mcp-device da 404, usá zyta_minerva_login con email+password o npx zyta-mcp-login.",
+          " Abrí la URL de Minerva, autorizá, y volvé a llamar zyta_minerva_login. Si falla, usá email+password.",
         successMessage: "Sesión Minerva OK. Token guardado.",
         credentialsMessage: "Sesión Minerva OK (email/contraseña). Token guardado.",
       })
@@ -127,6 +135,7 @@ export function registerMinervaTools(
           authenticated: false,
           ...base,
           loginHint: MINERVA_AUTH_HINT,
+          minervaAppUrl: resolveMinervaAppUrl(),
         });
       }
 

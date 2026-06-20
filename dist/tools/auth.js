@@ -1,65 +1,18 @@
 import { z } from "zod/v3";
-import { runDeviceLogin, clearPendingDevice } from "../auth/mcpDeviceLogin.js";
-import { clearSession, ensureToken, fetchCurrentUser, getBaseUrl, getTokenFilePath, getTokenSource, hasToken, setToken, validateToken, } from "../session.js";
+import { executeLogin, loginInputSchema } from "../auth/loginHandler.js";
+import { clearPendingDevice } from "../auth/mcpDeviceLogin.js";
+import { clearSession, ensureToken, fetchCurrentUser, getTokenFilePath, getTokenSource, hasToken, } from "../session.js";
 import { jsonResult, toolError } from "../toolResult.js";
-const loginInput = z.object({
-    access_token: z
-        .string()
-        .optional()
-        .describe("JWT manual (alternativa al device flow). También podés usar KAIRO_API_TOKEN en env."),
-});
 export function registerAuthTools(server, env) {
     server.registerTool("zyta_login", {
-        description: "Obligatorio antes de cualquier otra herramienta si no hay sesión. Sin argumentos: abre el navegador en la página de Zyta " +
-            "(OAuth device flow, estilo gh auth login). También acepta access_token manualmente. " +
-            "Si el login queda pendiente, volvé a llamar esta herramienta tras autorizar en el navegador.",
-        inputSchema: loginInput,
-    }, async (args) => {
-        try {
-            const baseUrl = getBaseUrl();
-            const manual = args.access_token?.trim() ||
-                process.env.KAIRO_API_TOKEN?.trim() ||
-                process.env.ZYTA_API_TOKEN?.trim();
-            if (manual) {
-                if (!(await validateToken(manual))) {
-                    return toolError(new Error("El token indicado no es válido o expiró."));
-                }
-                setToken(manual, true);
-                const user = await fetchCurrentUser(manual);
-                return jsonResult({
-                    ok: true,
-                    message: "Sesión OK. Token guardado.",
-                    baseUrl,
-                    tokenFile: getTokenFilePath(),
-                    user,
-                });
-            }
-            const result = await runDeviceLogin(baseUrl);
-            if (result.ok) {
-                setToken(result.accessToken, true);
-                return jsonResult({
-                    ok: true,
-                    message: "Sesión OK. Token guardado.",
-                    baseUrl,
-                    tokenFile: getTokenFilePath(),
-                    user: result.user,
-                });
-            }
-            if (result.pending) {
-                return jsonResult({
-                    ok: false,
-                    pending: true,
-                    message: result.message,
-                    userCode: result.userCode,
-                    verificationUriComplete: result.verificationUriComplete,
-                });
-            }
-            return toolError(new Error(result.message));
-        }
-        catch (e) {
-            return toolError(e);
-        }
-    });
+        description: "Obligatorio antes de cualquier otra herramienta si no hay sesión. " +
+            "Opciones (en orden): access_token manual; email+password (POST /auth/login); " +
+            "device flow (abre navegador en /mcp-device — requiere dashboard desplegado). " +
+            "Para Minerva preferí zyta_minerva_login. Si el device flow queda pendiente, usá email+password o `npx zyta-mcp-login`.",
+        inputSchema: loginInputSchema,
+    }, async (args) => executeLogin(args, {
+        pendingHint: " Si /mcp-device da 404, usá zyta_login con email+password o ejecutá: npx zyta-mcp-login",
+    }));
     server.registerTool("zyta_disconnect", {
         description: "Cierra la sesión del agente MCP (borra token en memoria y el archivo ~/.zyta-mcp/token). No cierra sesión en el navegador.",
         inputSchema: z.object({}),
@@ -68,7 +21,7 @@ export function registerAuthTools(server, env) {
         clearPendingDevice();
         return jsonResult({
             ok: true,
-            message: "Sesión del agente cerrada. Usá zyta_login para volver a autorizar.",
+            message: "Sesión del agente cerrada. Usá zyta_login o zyta_minerva_login para volver a autorizar.",
         });
     });
     server.registerTool("zyta_whoami", {
@@ -96,7 +49,7 @@ export function registerAuthTools(server, env) {
                 ? `Token en ${getTokenFilePath()} (o memoria tras zyta_login)`
                 : getTokenSource() === "env"
                     ? "Token desde KAIRO_API_TOKEN / ZYTA_API_TOKEN"
-                    : "Sin token — llamá a zyta_login",
+                    : "Sin token — llamá a zyta_login o zyta_minerva_login",
         });
     });
 }

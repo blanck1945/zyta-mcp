@@ -2,6 +2,9 @@ import { z } from "zod/v3";
 import { fetchAccessToken } from "./loginApi.js";
 import { runDeviceLogin } from "./mcpDeviceLogin.js";
 import {
+  type DeviceVerifyOverride,
+} from "./deviceVerifyUrl.js";
+import {
   fetchCurrentUser,
   getBaseUrl,
   getTokenFilePath,
@@ -36,6 +39,8 @@ export type LoginHandlerOptions = {
   pendingHint?: string;
   successMessage?: string;
   credentialsMessage?: string;
+  /** Device flow: abrir Minerva u otra base en lugar del dashboard del BE. */
+  deviceVerify?: DeviceVerifyOverride;
 };
 
 export async function executeLogin(
@@ -94,7 +99,7 @@ export async function executeLogin(
       });
     }
 
-    const result = await runDeviceLogin(baseUrl);
+    const result = await runDeviceLogin(baseUrl, options.deviceVerify);
     if (result.ok) {
       setToken(result.accessToken, true);
       return jsonResult({
