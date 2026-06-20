@@ -1,36 +1,19 @@
 /**
- * Resuelve URL base del API y JWT (env o archivo). No registrar valores en logs.
+ * Resuelve URL base del API. El token se gestiona vía session.ts (login MCP o archivo).
  */
-import { getDefaultTokenFilePath, readTokenFromFile, } from "./tokenStore.js";
-function normalizeBaseUrl(raw) {
-    return raw.trim().replace(/\/+$/, "");
-}
+import { bootstrapSession, getBaseUrl, getTokenSource, hasToken } from "./session.js";
+import { getTokenFilePath } from "./session.js";
 export function loadEnv() {
     const baseRaw = process.env.KAIRO_API_BASE_URL?.trim() ||
         process.env.ZYTA_API_BASE_URL?.trim();
     if (!baseRaw) {
         throw new Error("Falta KAIRO_API_BASE_URL o ZYTA_API_BASE_URL (URL del backend, sin barra final).");
     }
-    const baseUrl = normalizeBaseUrl(baseRaw);
-    const tokenFromEnv = process.env.KAIRO_API_TOKEN?.trim() ||
-        process.env.ZYTA_API_TOKEN?.trim();
-    if (tokenFromEnv) {
-        return {
-            baseUrl,
-            token: tokenFromEnv,
-            tokenSource: "env",
-        };
-    }
-    const tokenPath = process.env.KAIRO_TOKEN_FILE?.trim() ||
-        process.env.ZYTA_TOKEN_FILE?.trim() ||
-        getDefaultTokenFilePath();
-    const tokenFromFile = readTokenFromFile(tokenPath);
-    if (!tokenFromFile) {
-        throw new Error(`No hay token: definí KAIRO_API_TOKEN, o ejecutá \`npm run login\` en el repo (guarda el JWT en ${tokenPath}).`);
-    }
+    bootstrapSession(baseRaw);
     return {
-        baseUrl,
-        token: tokenFromFile,
-        tokenSource: "file",
+        baseUrl: getBaseUrl(),
+        tokenSource: getTokenSource(),
+        hasToken: hasToken(),
+        tokenFilePath: getTokenFilePath(),
     };
 }

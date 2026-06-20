@@ -1,5 +1,5 @@
 /**
- * Cliente HTTP mínimo hacia el API Kairo (misma semántica que el dashboard: Bearer JWT).
+ * Cliente HTTP mínimo hacia el API Zyta (Bearer JWT vía session).
  */
 export declare class ApiHttpError extends Error {
     readonly status: number;
@@ -7,8 +7,7 @@ export declare class ApiHttpError extends Error {
 }
 export declare class KairoApiClient {
     private readonly baseUrl;
-    private readonly token;
-    constructor(baseUrl: string, token: string);
+    constructor(baseUrl: string);
     get<T>(path: string): Promise<T>;
     post<T>(path: string, body: unknown): Promise<T>;
     private request;

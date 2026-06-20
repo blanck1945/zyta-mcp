@@ -1,5 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { ApiHttpError } from "./apiClient.js";
+import { AuthRequiredError } from "./session.js";
 
 const MAX_JSON_CHARS = 400_000;
 
@@ -13,6 +14,12 @@ export function jsonResult(data: unknown): CallToolResult {
 }
 
 export function toolError(err: unknown): CallToolResult {
+  if (err instanceof AuthRequiredError) {
+    return {
+      isError: true,
+      content: [{ type: "text", text: err.message }],
+    };
+  }
   if (err instanceof ApiHttpError) {
     return {
       isError: true,

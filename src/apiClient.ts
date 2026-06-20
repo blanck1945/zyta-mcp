@@ -1,6 +1,8 @@
 /**
- * Cliente HTTP mínimo hacia el API Kairo (misma semántica que el dashboard: Bearer JWT).
+ * Cliente HTTP mínimo hacia el API Zyta (Bearer JWT vía session).
  */
+
+import { ensureToken } from "./session.js";
 
 export class ApiHttpError extends Error {
   constructor(
@@ -13,10 +15,7 @@ export class ApiHttpError extends Error {
 }
 
 export class KairoApiClient {
-  constructor(
-    private readonly baseUrl: string,
-    private readonly token: string
-  ) {}
+  constructor(private readonly baseUrl: string) {}
 
   async get<T>(path: string): Promise<T> {
     return this.request<T>(path, { method: "GET" });
@@ -30,6 +29,7 @@ export class KairoApiClient {
   }
 
   private async request<T>(path: string, init: RequestInit): Promise<T> {
+    const token = await ensureToken();
     const p = path.startsWith("/") ? path : `/${path}`;
     const url = `${this.baseUrl}${p}`;
 
@@ -37,7 +37,7 @@ export class KairoApiClient {
       ...init,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${this.token}`,
+        Authorization: `Bearer ${token}`,
         ...(init.headers as Record<string, string>),
       },
     });

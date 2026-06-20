@@ -1,4 +1,5 @@
 import { ApiHttpError } from "./apiClient.js";
+import { AuthRequiredError } from "./session.js";
 const MAX_JSON_CHARS = 400_000;
 export function jsonResult(data) {
     const s = JSON.stringify(data, null, 2);
@@ -8,6 +9,12 @@ export function jsonResult(data) {
     return { content: [{ type: "text", text }] };
 }
 export function toolError(err) {
+    if (err instanceof AuthRequiredError) {
+        return {
+            isError: true,
+            content: [{ type: "text", text: err.message }],
+        };
+    }
     if (err instanceof ApiHttpError) {
         return {
             isError: true,

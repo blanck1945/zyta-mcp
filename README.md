@@ -21,10 +21,10 @@ Servidor [Model Context Protocol](https://modelcontextprotocol.io/) (transporte 
 ```
 
 1. Pegá eso en la config MCP de Cursor o Claude Desktop.
-2. En terminal (no en el chat): `npx --yes zyta-mcp-login-device` o `npx --yes zyta-mcp-login`.
-3. Reiniciá el servidor MCP. El token queda en `~/.zyta-mcp/token`.
+2. En el chat del agente: *"logueate en zyta"* → llama `zyta_login` → se abre el navegador en Zyta para autorizar.
+3. Alternativa en terminal: `npx --yes zyta-mcp-login-device` o `npx --yes zyta-mcp-login`.
 
-No hace falta clonar el repo. Solo Node.js 20+.
+No hace falta clonar el repo ni pegar JWT en el JSON. Solo Node.js 20+.
 
 ## Requisitos
 
@@ -216,7 +216,10 @@ Misma idea: `env` con al menos `KAIRO_API_BASE_URL`, y token vía archivo (login
 
 | Nombre | Descripción resumida |
 |--------|----------------------|
-| `zyta_auth_status` | Indica URL base y si el token viene de **env** o **archivo** (sin mostrar el JWT) |
+| `zyta_login` | **Login obligatorio** si no hay sesión. Abre el navegador en Zyta (device flow) o acepta `access_token` manual |
+| `zyta_disconnect` | Cierra la sesión del agente (borra token local) |
+| `zyta_whoami` | Usuario autenticado (GET /users) |
+| `zyta_auth_status` | URL base y origen del token (sin mostrar el JWT) |
 
 ### Judicial
 

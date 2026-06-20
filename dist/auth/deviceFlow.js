@@ -138,3 +138,38 @@ export async function pollDeviceUntilAccessToken(opts, session) {
     }
     throw new Error("Tiempo de espera agotado: el código de dispositivo expiró.");
 }
+export async function pollDeviceTokenOnce(opts, deviceCode) {
+    const path = opts.deviceTokenPath ?? DEFAULT_TOKEN_PATH;
+    const url = joinUrl(opts.baseUrl, path);
+    const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+            device_code: deviceCode,
+        }),
+    });
+    const text = await res.text();
+    let data;
+    try {
+        data = JSON.parse(text);
+    }
+    catch {
+        return { status: "error", error: `token: respuesta no JSON (${res.status})` };
+    }
+    if (res.ok) {
+        return { status: "ok", accessToken: parseTokenResponse(data) };
+    }
+    const oauthErr = typeof data.error === "string" ? data.error : "";
+    const errMsg = oauthErr ||
+        (typeof data.message === "string" ? data.message : "") ||
+        text.slice(0, 200);
+    const normalized = oauthErr.toLowerCase().replace(/\s+/g, "_");
+    if (oauthErr === "authorization_pending" || normalized === "authorization_pending") {
+        return { status: "pending" };
+    }
+    if (oauthErr === "slow_down" || normalized === "slow_down") {
+        return { status: "slow_down" };
+    }
+    return { status: "error", error: errMsg };
+}

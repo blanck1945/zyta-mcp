@@ -19,13 +19,12 @@ async function main() {
         process.exit(1);
         return;
     }
-    const api = new KairoApiClient(env.baseUrl, env.token);
-    const server = new McpServer({ name: "zyta-mcp", version: "1.0.0" }, {
-        instructions: "Herramientas para consultar el API Kairo/Zyta (judicial, jurisprudencia, marcas, Minerva). " +
-            "Incluye registrar actuaciones en causas sin portal desde mensaje (zyta_judicial_cursor_registrar_actuacion). " +
-            "Minerva: zyta_minerva_consultar (consulta con IA), zyta_minerva_buscar_fallos (solo RAG), " +
-            "zyta_minerva_historial (historial del usuario), zyta_minerva_uso (budget mensual). " +
-            "Autenticación: JWT vía KAIRO_API_TOKEN o archivo tras `npm run login`. No expone credenciales de portales al modelo.",
+    const api = new KairoApiClient(env.baseUrl);
+    const server = new McpServer({ name: "zyta-mcp", version: "1.1.0" }, {
+        instructions: "Herramientas para consultar el API Zyta (judicial, jurisprudencia, marcas, Minerva). " +
+            "Autenticación: llamá primero a zyta_login (abre el navegador en Zyta) si no hay sesión. " +
+            "Minerva: zyta_minerva_consultar, zyta_minerva_buscar_fallos, zyta_minerva_historial, zyta_minerva_uso. " +
+            "No expone credenciales de portales al modelo.",
     });
     registerAuthTools(server, env);
     registerJudicialTools(server, api);

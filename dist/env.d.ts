@@ -1,10 +1,12 @@
 /**
- * Resuelve URL base del API y JWT (env o archivo). No registrar valores en logs.
+ * Resuelve URL base del API. El token se gestiona vía session.ts (login MCP o archivo).
  */
-export type TokenSource = "env" | "file";
+import { getTokenSource } from "./session.js";
+export type { TokenSource } from "./session.js";
 export interface LoadedEnv {
     baseUrl: string;
-    token: string;
-    tokenSource: TokenSource;
+    tokenSource: ReturnType<typeof getTokenSource>;
+    hasToken: boolean;
+    tokenFilePath: string;
 }
 export declare function loadEnv(): LoadedEnv;

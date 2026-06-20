@@ -20,3 +20,15 @@ export interface DeviceFlowOptions {
 }
 export declare function startDeviceAuthorization(opts: DeviceFlowOptions): Promise<DeviceAuthorizationSession>;
 export declare function pollDeviceUntilAccessToken(opts: DeviceFlowOptions, session: DeviceAuthorizationSession): Promise<string>;
+export type DevicePollResult = {
+    status: "ok";
+    accessToken: string;
+} | {
+    status: "pending";
+} | {
+    status: "slow_down";
+} | {
+    status: "error";
+    error: string;
+};
+export declare function pollDeviceTokenOnce(opts: DeviceFlowOptions, deviceCode: string): Promise<DevicePollResult>;
