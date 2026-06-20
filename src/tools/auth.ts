@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
+import { fetchAccessToken } from "../auth/loginApi.js";
 import { runDeviceLogin, clearPendingDevice } from "../auth/mcpDeviceLogin.js";
 import type { LoadedEnv } from "../env.js";
 import {
@@ -22,6 +23,16 @@ const loginInput = z.object({
     .describe(
       "JWT manual (alternativa al device flow). También podés usar KAIRO_API_TOKEN en env."
     ),
+  email: z
+    .string()
+    .optional()
+    .describe(
+      "Email de Zyta. Con password hace POST /auth/login (sin depender del dashboard /mcp-device)."
+    ),
+  password: z
+    .string()
+    .optional()
+    .describe("Contraseña de Zyta. Requiere email."),
 });
 
 export function registerAuthTools(
@@ -32,9 +43,10 @@ export function registerAuthTools(
     "zyta_login",
     {
       description:
-        "Obligatorio antes de cualquier otra herramienta si no hay sesión. Sin argumentos: abre el navegador en la página de Zyta " +
-        "(OAuth device flow, estilo gh auth login). También acepta access_token manualmente. " +
-        "Si el login queda pendiente, volvé a llamar esta herramienta tras autorizar en el navegador.",
+        "Obligatorio antes de cualquier otra herramienta si no hay sesión. " +
+        "Opciones (en orden): access_token manual; email+password (POST /auth/login); " +
+        "device flow (abre navegador en /mcp-device — requiere dashboard desplegado). " +
+        "Si el device flow queda pendiente, usá email+password o `npx zyta-mcp-login`.",
       inputSchema: loginInput,
     },
     async (args) => {
@@ -60,6 +72,29 @@ export function registerAuthTools(
           });
         }
 
+        const email = args.email?.trim();
+        const password = args.password;
+        if (email || password !== undefined) {
+          if (!email || !password) {
+            return toolError(
+              new Error("Para login con credenciales indicá email y password juntos.")
+            );
+          }
+          const accessToken = await fetchAccessToken(baseUrl, email, password);
+          if (!(await validateToken(accessToken))) {
+            return toolError(new Error("Login OK pero el token recibido no es válido."));
+          }
+          setToken(accessToken, true);
+          const user = await fetchCurrentUser(accessToken);
+          return jsonResult({
+            ok: true,
+            message: "Sesión OK (email/contraseña). Token guardado.",
+            baseUrl,
+            tokenFile: getTokenFilePath(),
+            user,
+          });
+        }
+
         const result = await runDeviceLogin(baseUrl);
         if (result.ok) {
           setToken(result.accessToken, true);
@@ -76,7 +111,9 @@ export function registerAuthTools(
           return jsonResult({
             ok: false,
             pending: true,
-            message: result.message,
+            message:
+              result.message +
+              " Si /mcp-device da 404, usá zyta_login con email+password o ejecutá: npx zyta-mcp-login",
             userCode: result.userCode,
             verificationUriComplete: result.verificationUriComplete,
           });
