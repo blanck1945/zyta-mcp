@@ -27,7 +27,7 @@ Documento orientado al equipo (y al propio MCP en Cursor): **qué existe hoy** e
 | `src/auth/deviceFlow.ts` | Flujo OAuth 2.0 **Device Authorization** (RFC 8628): `device-authorization` + polling `token`. |
 | `src/login-cli.ts` | CLI `npm run login` (contraseña en terminal, no en el chat). |
 | `src/device-login-cli.ts` | CLI `npm run login:device` (abre navegador en `verification_uri`). |
-| `src/tools/auth.ts` | Herramienta `zyta_auth_status`. |
+| `src/tools/auth.ts` | Herramientas `zyta_login`, `zyta_disconnect`, `zyta_whoami`, `zyta_auth_status`. |
 | `src/tools/judicial.ts` | Herramientas PJN/SCBA / expedientes. |
 | `src/tools/jurisprudencia.ts` | Búsqueda de jurisprudencia. |
 | `src/tools/trademarks.ts` | Búsqueda de marcas (histórico). |
@@ -41,6 +41,9 @@ Documento orientado al equipo (y al propio MCP en Cursor): **qué existe hoy** e
 
 | Herramienta MCP | Método API | Ruta backend (referencia) |
 |-----------------|------------|---------------------------|
+| `zyta_login` | — | Device flow: POST `/auth/mcp/device-authorization` + polling `/auth/mcp/token`; o token manual |
+| `zyta_disconnect` | — | Borra token local (~/.zyta-mcp/token) |
+| `zyta_whoami` | GET | `/users` |
 | `zyta_auth_status` | — | No llama API; solo describe `baseUrl` y origen del token. |
 | `zyta_judicial_portals_status` | GET | `/judicial/portals/status` |
 | `zyta_judicial_expedientes_list` | GET | `/judicial/expedientes` (query opcional `portal`: `pjn` \| `scba`) |
