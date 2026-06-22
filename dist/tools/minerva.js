@@ -19,6 +19,10 @@ function minervaToolError(err) {
     }
     return toolError(err);
 }
+const conversationMessage = z.object({
+    role: z.enum(["user", "assistant"]).describe("Rol del mensaje"),
+    content: z.string().describe("Contenido del mensaje"),
+});
 const consultaInput = z.object({
     query: z.string().min(1).describe("Consulta jurídica en lenguaje natural"),
     top_k: z
@@ -38,6 +42,10 @@ const consultaInput = z.object({
         .string()
         .optional()
         .describe("Modelo a usar: gemini-2.5-flash (default), gemini-2.5-pro, claude-haiku-4-5-20251001, claude-sonnet-4-6"),
+    history: z
+        .array(conversationMessage)
+        .optional()
+        .describe("Historial de la conversación previa (turnos anteriores). Permite consultas multi-turno con contexto."),
 });
 const buscarInput = z.object({
     query: z.string().min(1).describe("Texto de búsqueda"),
